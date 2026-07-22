@@ -64,6 +64,12 @@ class ProxyHandler(http.server.BaseHTTPRequestHandler):
             self.send_response(404)
             self.end_headers()
 
+    def do_HEAD(self):
+        # Render sends HEAD requests for health checks. Return 200 OK.
+        self.send_response(200)
+        self.send_header('Content-type', 'text/html')
+        self.end_headers()
+
 def start_http_proxy():
     # Fix for Address already in use error on restart
     socketserver.TCPServer.allow_reuse_address = True
