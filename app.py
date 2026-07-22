@@ -120,6 +120,7 @@ def get_stream_url(video_id):
     print("[!] All Piped APIs failed. Falling back to yt-dlp...")
     
     # METHOD 2: yt-dlp fallback (Mostly works on residential IPs, fails on Datacenters)
+    import os
     ydl_opts = {
         'format': 'bestaudio/best',
         'quiet': True,
@@ -133,6 +134,12 @@ def get_stream_url(video_id):
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'
         }
     }
+    
+    # If the user provided cookies via Render Secret Files, use them!
+    if os.path.exists('cookies.txt'):
+        print("[*] Found cookies.txt! Using authenticated YouTube access.")
+        ydl_opts['cookiefile'] = 'cookies.txt'
+        
     with yt_dlp.YoutubeDL(ydl_opts) as ydl:
         info = ydl.extract_info(f"https://www.youtube.com/watch?v={video_id}", download=False)
         return info['url']
