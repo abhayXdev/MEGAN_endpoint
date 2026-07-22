@@ -93,41 +93,44 @@ def search_music(query):
 def get_stream_url(video_id):
     print(f"[*] Extracting stream URL for Video ID: {video_id}")
     
-    # METHOD 1: Try Invidious API (Bypasses YouTube Bot Blocks completely)
+    # METHOD 1: Piped API (Highly reliable, bypasses IP blocks via server proxies)
     import json
+    import urllib.request
     instances = [
-        "https://invidious.nerdvpn.de",
-        "https://invidious.privacydev.net",
-        "https://vid.puffyan.us",
-        "https://invidious.lunar.icu"
+        "https://pipedapi.kavin.rocks",
+        "https://pipedapi.tokhmi.xyz",
+        "https://api.piped.projectsegfau.lt",
+        "https://pipedapi.smnz.de"
     ]
     for instance in instances:
         try:
-            url = f"{instance}/api/v1/videos/{video_id}"
-            req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
-            with urllib.request.urlopen(req, timeout=4) as response:
+            url = f"{instance}/streams/{video_id}"
+            req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'})
+            with urllib.request.urlopen(req, timeout=5) as response:
                 data = json.loads(response.read().decode())
-                # Find the best audio-only format
-                for f in data.get("adaptiveFormats", []):
-                    if f.get("type", "").startswith("audio/mp4") or f.get("type", "").startswith("audio/webm"):
-                        print(f"[*] Successfully extracted via Invidious ({instance})")
-                        return f["url"]
-        except Exception:
+                audio_streams = data.get("audioStreams", [])
+                if audio_streams:
+                    print(f"[*] Successfully extracted via Piped API ({instance})")
+                    # Piped returns proxy URLs that do not trigger YouTube's IP binding limits!
+                    return audio_streams[0]["url"]
+        except Exception as e:
+            print(f"[!] Piped ({instance}) failed: {e}")
             continue
             
-    print("[!] Invidious failed, falling back to yt-dlp with heavy spoofing...")
+    print("[!] All Piped APIs failed. Falling back to yt-dlp...")
     
-    # METHOD 2: yt-dlp with heavy Android spoofing
+    # METHOD 2: yt-dlp fallback (Mostly works on residential IPs, fails on Datacenters)
     ydl_opts = {
         'format': 'bestaudio/best',
         'quiet': True,
+        'nocheckcertificate': True,
         'extractor_args': {
             'youtube': {
-                'client': ['ANDROID_TESTSUITE', 'TV_EMBEDDED', 'IOS']
+                'client': ['ANDROID_TESTSUITE', 'IOS']
             }
         },
         'http_headers': {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'
         }
     }
     with yt_dlp.YoutubeDL(ydl_opts) as ydl:
