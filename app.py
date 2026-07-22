@@ -60,6 +60,17 @@ class ProxyHandler(http.server.BaseHTTPRequestHandler):
             self.send_header('Content-type', 'text/html')
             self.end_headers()
             self.wfile.write(b"<html><body><h1>XiaoZhi Music MCP Server is Running!</h1></body></html>")
+        elif parsed_path.path.startswith('/test/'):
+            video_id = parsed_path.path.split('/')[-1]
+            try:
+                url = get_stream_url(video_id)
+                self.send_response(200)
+                self.end_headers()
+                self.wfile.write(f"Success! Extracted URL: {url}".encode())
+            except Exception as e:
+                self.send_response(500)
+                self.end_headers()
+                self.wfile.write(f"Failed: {e}".encode())
         else:
             self.send_response(404)
             self.end_headers()
