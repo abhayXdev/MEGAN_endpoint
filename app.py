@@ -148,10 +148,16 @@ def get_stream_url(video_id):
     
     # If the user provided cookies via Render Secret Files, use them!
     import glob
+    import shutil
     cookie_files = glob.glob('/etc/secrets/*cookie*.txt') + glob.glob('*cookie*.txt')
     if cookie_files:
-        print(f"[*] Found cookie file at {cookie_files[0]}! Using authenticated YouTube access.")
-        ydl_opts['cookiefile'] = cookie_files[0]
+        original_cookie = cookie_files[0]
+        # /etc/secrets is a Read-Only file system! yt-dlp tries to write to the cookie file to update it.
+        # We must copy it to /tmp so yt-dlp doesn't crash with a Read-Only error.
+        writable_cookie = "/tmp/working_cookies.txt"
+        shutil.copyfile(original_cookie, writable_cookie)
+        print(f"[*] Found cookie file. Copied to writable path {writable_cookie} for yt-dlp.")
+        ydl_opts['cookiefile'] = writable_cookie
     else:
         print("[!] No cookies file found. yt-dlp will attempt unauthenticated access.")
         
