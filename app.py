@@ -92,13 +92,42 @@ def search_music(query):
 
 def get_stream_url(video_id):
     print(f"[*] Extracting stream URL for Video ID: {video_id}")
+    
+    # METHOD 1: Try Invidious API (Bypasses YouTube Bot Blocks completely)
+    import json
+    instances = [
+        "https://invidious.nerdvpn.de",
+        "https://invidious.privacydev.net",
+        "https://vid.puffyan.us",
+        "https://invidious.lunar.icu"
+    ]
+    for instance in instances:
+        try:
+            url = f"{instance}/api/v1/videos/{video_id}"
+            req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
+            with urllib.request.urlopen(req, timeout=4) as response:
+                data = json.loads(response.read().decode())
+                # Find the best audio-only format
+                for f in data.get("adaptiveFormats", []):
+                    if f.get("type", "").startswith("audio/mp4") or f.get("type", "").startswith("audio/webm"):
+                        print(f"[*] Successfully extracted via Invidious ({instance})")
+                        return f["url"]
+        except Exception:
+            continue
+            
+    print("[!] Invidious failed, falling back to yt-dlp with heavy spoofing...")
+    
+    # METHOD 2: yt-dlp with heavy Android spoofing
     ydl_opts = {
         'format': 'bestaudio/best',
         'quiet': True,
         'extractor_args': {
             'youtube': {
-                'client': ['ANDROID', 'IOS']
+                'client': ['ANDROID_TESTSUITE', 'TV_EMBEDDED', 'IOS']
             }
+        },
+        'http_headers': {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
         }
     }
     with yt_dlp.YoutubeDL(ydl_opts) as ydl:
