@@ -97,7 +97,7 @@ def get_stream_url(video_id):
         'quiet': True,
         'extractor_args': {
             'youtube': {
-                'client': ['android', 'ios']
+                'client': ['ANDROID', 'IOS']
             }
         }
     }
