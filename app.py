@@ -90,85 +90,28 @@ def start_http_proxy():
     httpd.serve_forever()
 
 
-# --- YT-DLP Music Functions ---
+# --- Music Functions (Using SoundCloud to bypass YouTube Datacenter Blocks) ---
 def search_music(query):
-    print(f"[*] Searching YouTube for: {query}")
-    ydl_opts = {'format': 'm4a/bestaudio[ext=m4a]', 'noplaylist': True, 'quiet': True}
+    print(f"[*] Searching SoundCloud for: {query}")
+    ydl_opts = {'format': 'bestaudio/best', 'noplaylist': True, 'quiet': True}
     with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-        info = ydl.extract_info(f"ytsearch1:{query}", download=False)
+        info = ydl.extract_info(f"scsearch1:{query}", download=False)
         if 'entries' in info and len(info['entries']) > 0:
             entry = info['entries'][0]
-            return entry['id'], entry['title']
+            # We use the SoundCloud track URL as our unique identifier
+            return entry['url'], entry['title']
         return None, None
 
-def get_stream_url(video_id):
-    print(f"[*] Extracting stream URL for Video ID: {video_id}")
+def get_stream_url(track_url):
+    print(f"[*] Extracting stream URL for SoundCloud track: {track_url}")
     
-    # METHOD 1: Piped API (Highly reliable, bypasses IP blocks via server proxies)
-    import json
-    import urllib.request
-    instances = [
-        "https://pipedapi.kavin.rocks",
-        "https://pipedapi.tokhmi.xyz",
-        "https://api.piped.projectsegfau.lt",
-        "https://pipedapi.smnz.de"
-    ]
-    for instance in instances:
-        try:
-            url = f"{instance}/streams/{video_id}"
-            req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'})
-            with urllib.request.urlopen(req, timeout=5) as response:
-                data = json.loads(response.read().decode())
-                audio_streams = data.get("audioStreams", [])
-                if audio_streams:
-                    print(f"[*] Successfully extracted via Piped API ({instance})")
-                    # Piped returns proxy URLs that do not trigger YouTube's IP binding limits!
-                    return audio_streams[0]["url"]
-        except Exception as e:
-            print(f"[!] Piped ({instance}) failed: {e}")
-            continue
-            
-    print("[!] All Piped APIs failed. Falling back to yt-dlp...")
-    
-    # METHOD 2: yt-dlp fallback (Mostly works on residential IPs, fails on Datacenters)
-    import os
     ydl_opts = {
         'format': 'bestaudio/best',
         'quiet': True,
-        'nocheckcertificate': True,
-        'extractor_args': {
-            'youtube': {
-                'client': ['ANDROID_TESTSUITE', 'IOS']
-            }
-        },
-        'http_headers': {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'
-        }
+        'nocheckcertificate': True
     }
-    
-    # If the user provided cookies via Render Secret Files, use them!
-    import glob
-    import shutil
-    
-    env_cookies = os.environ.get('YOUTUBE_COOKIES')
-    if env_cookies:
-        print("[*] Found YOUTUBE_COOKIES environment variable! Using authenticated YouTube access.")
-        with open("/tmp/working_cookies.txt", "w", encoding="utf-8") as f:
-            f.write(env_cookies)
-        ydl_opts['cookiefile'] = "/tmp/working_cookies.txt"
-    else:
-        cookie_files = glob.glob('/etc/secrets/*cookie*.txt') + glob.glob('*cookie*.txt')
-        if cookie_files:
-            original_cookie = cookie_files[0]
-            writable_cookie = "/tmp/working_cookies.txt"
-            shutil.copyfile(original_cookie, writable_cookie)
-            print(f"[*] Found cookie file. Copied to writable path {writable_cookie} for yt-dlp.")
-            ydl_opts['cookiefile'] = writable_cookie
-        else:
-            print("[!] No cookies file found in /etc/secrets or YOUTUBE_COOKIES. yt-dlp will attempt unauthenticated access.")
-        
     with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-        info = ydl.extract_info(f"https://www.youtube.com/watch?v={video_id}", download=False)
+        info = ydl.extract_info(track_url, download=False)
         return info['url']
 
 
@@ -202,7 +145,7 @@ async def handle_mcp_message(websocket, message):
                 "tools": [
                     {
                         "name": "search_global_music",
-                        "description": "Search for music on YouTube globally. Returns the video ID and title.",
+                        "description": "Search for music on SoundCloud globally. Returns the track URL and title.",
                         "inputSchema": {
                             "type": "object",
                             "properties": {
@@ -213,11 +156,11 @@ async def handle_mcp_message(websocket, message):
                     },
                     {
                         "name": "play_global_music",
-                        "description": "Prepares the requested video ID for streaming and returns the local laptop HTTP URL. You MUST then use the ESP32's 'self.audio.play_music' tool with this local URL to actually play the audio from the speaker.",
+                        "description": "Prepares the requested SoundCloud track URL for streaming and returns the local HTTP URL. You MUST then use the ESP32's 'self.audio.play_music' tool with this local URL to actually play the audio from the speaker.",
                         "inputSchema": {
                             "type": "object",
                             "properties": {
-                                "video_id": {"type": "string", "description": "The YouTube video ID returned by search_global_music"}
+                                "video_id": {"type": "string", "description": "The SoundCloud track URL returned by search_global_music"}
                             },
                             "required": ["video_id"]
                         }
