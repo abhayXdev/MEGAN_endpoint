@@ -136,8 +136,11 @@ def get_stream_url(video_id):
     }
     
     # If the user provided cookies via Render Secret Files, use them!
-    if os.path.exists('cookies.txt'):
-        print("[*] Found cookies.txt! Using authenticated YouTube access.")
+    if os.path.exists('/etc/secrets/cookies.txt'):
+        print("[*] Found cookies.txt in /etc/secrets! Using authenticated YouTube access.")
+        ydl_opts['cookiefile'] = '/etc/secrets/cookies.txt'
+    elif os.path.exists('cookies.txt'):
+        print("[*] Found local cookies.txt! Using authenticated YouTube access.")
         ydl_opts['cookiefile'] = 'cookies.txt'
         
     with yt_dlp.YoutubeDL(ydl_opts) as ydl:
