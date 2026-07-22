@@ -1,9 +1,9 @@
 # Use a lightweight Linux with Python pre-installed
-FROM python:3.10-slim
+FROM python:3.11-slim
 
-# Install FFmpeg
+# Install FFmpeg and NodeJS (for yt-dlp JavaScript extraction bypass)
 RUN apt-get update && \
-    apt-get install -y ffmpeg && \
+    apt-get install -y ffmpeg nodejs && \
     rm -rf /var/lib/apt/lists/*
 
 # Set the working directory
