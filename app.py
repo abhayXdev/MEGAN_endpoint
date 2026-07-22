@@ -22,7 +22,7 @@ HTTP_PORT = 7860
 
 # When hosting on Hugging Face, you will set this secret to your Space URL
 # (e.g., "username-xiaozhi-music.hf.space"). For local testing, it defaults to your laptop IP.
-PUBLIC_HOST = os.environ.get("PUBLIC_HOST", "192.168.29.18:7860")
+PUBLIC_HOST = os.environ.get("RENDER_EXTERNAL_HOSTNAME", os.environ.get("PUBLIC_HOST", "192.168.29.18:7860"))
 
 # Global variable to hold the current raw stream URL from YouTube
 CURRENT_STREAM_URL = ""
@@ -177,7 +177,7 @@ async def handle_mcp_message(websocket, message):
                 CURRENT_STREAM_URL = get_stream_url(video_id)
                 
                 # Use http:// for local laptop testing, but https:// if deployed to Hugging Face
-                protocol = "https" if "hf.space" in PUBLIC_HOST else "http"
+                protocol = "https" if ("hf.space" in PUBLIC_HOST or "onrender.com" in PUBLIC_HOST) else "http"
                 local_url = f"{protocol}://{PUBLIC_HOST}/stream.pcm"
                 
                 text = f"Stream is ready at {local_url}. Now CALL the 'self.audio.play_music' tool with this URL."
