@@ -76,7 +76,12 @@ def start_http_proxy():
 # --- YT-DLP Music Functions ---
 def search_music(query):
     print(f"[*] Searching YouTube for: {query}")
-    ydl_opts = {'format': 'm4a/bestaudio[ext=m4a]', 'noplaylist': True, 'quiet': True}
+    ydl_opts = {
+        'format': 'm4a/bestaudio[ext=m4a]', 
+        'noplaylist': True, 
+        'quiet': True,
+        'extractor_args': {'youtube': ['client=ANDROID_VR']}
+    }
     with yt_dlp.YoutubeDL(ydl_opts) as ydl:
         info = ydl.extract_info(f"ytsearch1:{query}", download=False)
         if 'entries' in info and len(info['entries']) > 0:
@@ -86,7 +91,11 @@ def search_music(query):
 
 def get_stream_url(video_id):
     print(f"[*] Extracting stream URL for Video ID: {video_id}")
-    ydl_opts = {'format': 'm4a/bestaudio[ext=m4a]', 'quiet': True}
+    ydl_opts = {
+        'format': 'm4a/bestaudio[ext=m4a]', 
+        'quiet': True,
+        'extractor_args': {'youtube': ['client=ANDROID_VR']}
+    }
     with yt_dlp.YoutubeDL(ydl_opts) as ydl:
         info = ydl.extract_info(f"https://www.youtube.com/watch?v={video_id}", download=False)
         return info['url']
