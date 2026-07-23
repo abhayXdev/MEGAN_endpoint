@@ -22,7 +22,7 @@ HTTP_PORT = 7860
 
 # When hosting on Hugging Face, you will set this secret to your Space URL
 # (e.g., "username-xiaozhi-music.hf.space"). For local testing, it defaults to your laptop IP.
-PUBLIC_HOST = os.environ.get("RENDER_EXTERNAL_HOSTNAME", os.environ.get("PUBLIC_HOST", "192.168.29.18:7860"))
+PUBLIC_HOST = os.environ.get("PUBLIC_HOST", "192.168.29.18:7860")
 
 # Global variable to hold the current raw stream URL from YouTube
 CURRENT_STREAM_URL = ""
@@ -60,26 +60,9 @@ class ProxyHandler(http.server.BaseHTTPRequestHandler):
             self.send_header('Content-type', 'text/html')
             self.end_headers()
             self.wfile.write(b"<html><body><h1>XiaoZhi Music MCP Server is Running!</h1></body></html>")
-        elif parsed_path.path.startswith('/test/'):
-            video_id = parsed_path.path.split('/')[-1]
-            try:
-                url = get_stream_url(video_id)
-                self.send_response(200)
-                self.end_headers()
-                self.wfile.write(f"Success! Extracted URL: {url}".encode())
-            except Exception as e:
-                self.send_response(500)
-                self.end_headers()
-                self.wfile.write(f"Failed: {e}".encode())
         else:
             self.send_response(404)
             self.end_headers()
-
-    def do_HEAD(self):
-        # Render sends HEAD requests for health checks. Return 200 OK.
-        self.send_response(200)
-        self.send_header('Content-type', 'text/html')
-        self.end_headers()
 
 def start_http_proxy():
     # Fix for Address already in use error on restart
@@ -90,28 +73,22 @@ def start_http_proxy():
     httpd.serve_forever()
 
 
-# --- Music Functions (Using SoundCloud to bypass YouTube Datacenter Blocks) ---
+# --- YT-DLP Music Functions ---
 def search_music(query):
-    print(f"[*] Searching SoundCloud for: {query}")
-    ydl_opts = {'format': 'bestaudio/best', 'noplaylist': True, 'quiet': True}
+    print(f"[*] Searching YouTube for: {query}")
+    ydl_opts = {'format': 'm4a/bestaudio[ext=m4a]', 'noplaylist': True, 'quiet': True}
     with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-        info = ydl.extract_info(f"scsearch1:{query}", download=False)
+        info = ydl.extract_info(f"ytsearch1:{query}", download=False)
         if 'entries' in info and len(info['entries']) > 0:
             entry = info['entries'][0]
-            # We use the SoundCloud track URL as our unique identifier
-            return entry['url'], entry['title']
+            return entry['id'], entry['title']
         return None, None
 
-def get_stream_url(track_url):
-    print(f"[*] Extracting stream URL for SoundCloud track: {track_url}")
-    
-    ydl_opts = {
-        'format': 'bestaudio/best',
-        'quiet': True,
-        'nocheckcertificate': True
-    }
+def get_stream_url(video_id):
+    print(f"[*] Extracting stream URL for Video ID: {video_id}")
+    ydl_opts = {'format': 'm4a/bestaudio[ext=m4a]', 'quiet': True}
     with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-        info = ydl.extract_info(track_url, download=False)
+        info = ydl.extract_info(f"https://www.youtube.com/watch?v={video_id}", download=False)
         return info['url']
 
 
@@ -137,6 +114,14 @@ async def handle_mcp_message(websocket, message):
         }
         await websocket.send(json.dumps(res))
     
+    elif method == "ping":
+        res = {
+            "jsonrpc": "2.0",
+            "id": req_id,
+            "result": {}
+        }
+        await websocket.send(json.dumps(res))
+        
     elif method == "tools/list":
         res = {
             "jsonrpc": "2.0",
@@ -145,7 +130,7 @@ async def handle_mcp_message(websocket, message):
                 "tools": [
                     {
                         "name": "search_global_music",
-                        "description": "Search for music on SoundCloud globally. Returns the track URL and title.",
+                        "description": "Search for music on YouTube globally. Returns the video ID and title.",
                         "inputSchema": {
                             "type": "object",
                             "properties": {
@@ -156,11 +141,11 @@ async def handle_mcp_message(websocket, message):
                     },
                     {
                         "name": "play_global_music",
-                        "description": "Prepares the requested SoundCloud track URL for streaming and returns the local HTTP URL. You MUST then use the ESP32's 'self.audio.play_music' tool with this local URL to actually play the audio from the speaker.",
+                        "description": "Prepares the requested video ID for streaming and returns the local laptop HTTP URL. You MUST then use the ESP32's 'self.audio.play_music' tool with this local URL to actually play the audio from the speaker.",
                         "inputSchema": {
                             "type": "object",
                             "properties": {
-                                "video_id": {"type": "string", "description": "The SoundCloud track URL returned by search_global_music"}
+                                "video_id": {"type": "string", "description": "The YouTube video ID returned by search_global_music"}
                             },
                             "required": ["video_id"]
                         }
@@ -200,7 +185,7 @@ async def handle_mcp_message(websocket, message):
                 CURRENT_STREAM_URL = get_stream_url(video_id)
                 
                 # Use http:// for local laptop testing, but https:// if deployed to Hugging Face
-                protocol = "https" if ("hf.space" in PUBLIC_HOST or "onrender.com" in PUBLIC_HOST) else "http"
+                protocol = "https" if "hf.space" in PUBLIC_HOST else "http"
                 local_url = f"{protocol}://{PUBLIC_HOST}/stream.pcm"
                 
                 text = f"Stream is ready at {local_url}. Now CALL the 'self.audio.play_music' tool with this URL."
