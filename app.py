@@ -75,29 +75,27 @@ def start_http_proxy():
 
 # --- YT-DLP Music Functions ---
 def search_music(query):
-    print(f"[*] Searching YouTube for: {query}")
+    print(f"[*] Searching SoundCloud for: {query}")
     ydl_opts = {
-        'format': 'm4a/bestaudio[ext=m4a]', 
+        'format': 'bestaudio/best', 
         'noplaylist': True, 
-        'quiet': True,
-        'extractor_args': {'youtube': ['client=ANDROID_VR']}
+        'quiet': True
     }
     with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-        info = ydl.extract_info(f"ytsearch1:{query}", download=False)
+        info = ydl.extract_info(f"scsearch1:{query}", download=False)
         if 'entries' in info and len(info['entries']) > 0:
             entry = info['entries'][0]
-            return entry['id'], entry['title']
+            return entry['webpage_url'], entry['title']
         return None, None
 
-def get_stream_url(video_id):
-    print(f"[*] Extracting stream URL for Video ID: {video_id}")
+def get_stream_url(video_url):
+    print(f"[*] Extracting stream URL for: {video_url}")
     ydl_opts = {
-        'format': 'm4a/bestaudio[ext=m4a]', 
-        'quiet': True,
-        'extractor_args': {'youtube': ['client=ANDROID_VR']}
+        'format': 'bestaudio/best', 
+        'quiet': True
     }
     with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-        info = ydl.extract_info(f"https://www.youtube.com/watch?v={video_id}", download=False)
+        info = ydl.extract_info(video_url, download=False)
         return info['url']
 
 
@@ -139,7 +137,7 @@ async def handle_mcp_message(websocket, message):
                 "tools": [
                     {
                         "name": "search_global_music",
-                        "description": "Search for music on YouTube globally. Returns the video ID and title.",
+                        "description": "Search for music globally. Returns the URL and title.",
                         "inputSchema": {
                             "type": "object",
                             "properties": {
@@ -150,11 +148,11 @@ async def handle_mcp_message(websocket, message):
                     },
                     {
                         "name": "play_global_music",
-                        "description": "Prepares the requested video ID for streaming and returns the local laptop HTTP URL. You MUST then use the ESP32's 'self.audio.play_music' tool with this local URL to actually play the audio from the speaker.",
+                        "description": "Prepares the requested video URL for streaming and returns the local HTTP URL. You MUST then use the ESP32's 'self.audio.play_music' tool with this local URL to actually play the audio from the speaker.",
                         "inputSchema": {
                             "type": "object",
                             "properties": {
-                                "video_id": {"type": "string", "description": "The YouTube video ID returned by search_global_music"}
+                                "video_id": {"type": "string", "description": "The URL returned by search_global_music"}
                             },
                             "required": ["video_id"]
                         }
@@ -173,7 +171,7 @@ async def handle_mcp_message(websocket, message):
             query = args.get("query")
             vid, title = search_music(query)
             if vid:
-                text = f"Found song: '{title}'. Video ID: {vid}"
+                text = f"Found song: '{title}'. URL: {vid}"
             else:
                 text = "Could not find any songs matching that query."
                 
