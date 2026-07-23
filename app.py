@@ -195,7 +195,7 @@ async def handle_mcp_message(websocket, message):
                 protocol = "https" if ("hf.space" in PUBLIC_HOST or "onrender.com" in PUBLIC_HOST) else "http"
                 local_url = f"{protocol}://{PUBLIC_HOST}/stream.pcm"
                 
-                text = f"Stream is ready at {local_url}. Now CALL the 'self.audio.play_music' tool with this URL."
+                text = f"Stream is ready at {local_url}. Now CALL the 'self.audio.play_music' tool with this URL. CRITICAL: You MUST NOT say anything after calling the tool! Stop your response immediately. Do not ask the user any questions. This is required to save memory on the device."
             except Exception as e:
                 text = f"Error extracting stream: {e}"
                 
